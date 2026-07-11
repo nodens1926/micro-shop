@@ -1,0 +1,251 @@
+databaseChangeLog:
+  # 1. СОЗДАЕМ ТАБЛИЦЫ
+  - changeSet:
+      id: 20260711-create-orders-table
+      author: anton
+      changes:
+        - createTable:
+            tableName: orders
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: customer_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: customer_email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_amount
+                  type: DECIMAL(10, 2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 20260711-create-orders-items-table
+      author: anton
+      changes:
+        - createTable:
+            tableName: orders_items
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: order_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: product_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: product_name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: quantity
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: price
+                  type: DECIMAL(10, 2)
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: orders_items
+            baseColumnNames: order_id
+            referencedTableName: orders
+            referencedColumnNames: id
+            constraintName: fk_orders_items_order
+            onDelete: CASCADE
+
+  # 2. ВСТАВЛЯЕМ ДАННЫЕ (как было)
+  - changeSet:
+      id: 20260711-insert-orders
+      author: anton
+      context: dev
+      changes:
+        - insert:
+            tableName: orders
+            columns:
+              - column:
+                  name: id
+                  value: "550e8400-e29b-41d4-a716-446655440000"
+              - column:
+                  name: customer_id
+                  value: "123e4567-e89b-12d3-a456-426614174000"
+              - column:
+                  name: customer_email
+                  value: "ivan@mail.ru"
+              - column:
+                  name: status
+                  value: "COMPLETED"
+              - column:
+                  name: total_amount
+                  valueNumeric: 1500.50
+              - column:
+                  name: created_at
+                  valueDate: "2026-07-11T10:30:00"
+
+        - insert:
+            tableName: orders
+            columns:
+              - column:
+                  name: id
+                  value: "550e8400-e29b-41d4-a716-446655440001"
+              - column:
+                  name: customer_id
+                  value: "987fcdeb-51a3-4e7a-8b9c-123456789012"
+              - column:
+                  name: customer_email
+                  value: "petr@mail.ru"
+              - column:
+                  name: status
+                  value: "PENDING"
+              - column:
+                  name: total_amount
+                  valueNumeric: 750.00
+              - column:
+                  name: created_at
+                  valueDate: "2026-07-11T11:15:00"
+
+        - insert:
+            tableName: orders
+            columns:
+              - column:
+                  name: id
+                  value: "550e8400-e29b-41d4-a716-446655440002"
+              - column:
+                  name: customer_id
+                  value: "abc12345-6789-4def-9012-345678901234"
+              - column:
+                  name: customer_email
+                  value: "anna@mail.ru"
+              - column:
+                  name: status
+                  value: "PROCESSING"
+              - column:
+                  name: total_amount
+                  valueNumeric: 3200.75
+              - column:
+                  name: created_at
+                  valueDate: "2026-07-11T12:00:00"
+
+  - changeSet:
+      id: 20260711-insert-orders-items
+      author: anton
+      context: dev
+      changes:
+        - insert:
+            tableName: orders_items
+            columns:
+              - column:
+                  name: id
+                  value: "660e8400-e29b-41d4-a716-446655440000"
+              - column:
+                  name: order_id
+                  value: "550e8400-e29b-41d4-a716-446655440000"
+              - column:
+                  name: product_id
+                  value: "777e8400-e29b-41d4-a716-446655440000"
+              - column:
+                  name: product_name
+                  value: "Ноутбук"
+              - column:
+                  name: quantity
+                  valueNumeric: 2
+              - column:
+                  name: price
+                  valueNumeric: 750.25
+
+        - insert:
+            tableName: orders_items
+            columns:
+              - column:
+                  name: id
+                  value: "660e8400-e29b-41d4-a716-446655440001"
+              - column:
+                  name: order_id
+                  value: "550e8400-e29b-41d4-a716-446655440000"
+              - column:
+                  name: product_id
+                  value: "888e8400-e29b-41d4-a716-446655440000"
+              - column:
+                  name: product_name
+                  value: "Мышь"
+              - column:
+                  name: quantity
+                  valueNumeric: 1
+              - column:
+                  name: price
+                  valueNumeric: 25.00
+
+        - insert:
+            tableName: orders_items
+            columns:
+              - column:
+                  name: id
+                  value: "660e8400-e29b-41d4-a716-446655440002"
+              - column:
+                  name: order_id
+                  value: "550e8400-e29b-41d4-a716-446655440001"
+              - column:
+                  name: product_id
+                  value: "999e8400-e29b-41d4-a716-446655440000"
+              - column:
+                  name: product_name
+                  value: "Клавиатура"
+              - column:
+                  name: quantity
+                  valueNumeric: 3
+              - column:
+                  name: price
+                  valueNumeric: 250.00
+
+        - insert:
+            tableName: orders_items
+            columns:
+              - column:
+                  name: id
+                  value: "660e8400-e29b-41d4-a716-446655440003"
+              - column:
+                  name: order_id
+                  value: "550e8400-e29b-41d4-a716-446655440002"
+              - column:
+                  name: product_id
+                  value: "111e8400-e29b-41d4-a716-446655440000"
+              - column:
+                  name: product_name
+                  value: "Монитор"
+              - column:
+                  name: quantity
+                  valueNumeric: 1
+              - column:
+                  name: price
+                  valueNumeric: 3200.75

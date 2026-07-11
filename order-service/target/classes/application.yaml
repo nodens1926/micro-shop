@@ -1,0 +1,35 @@
+spring:
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: "localhost:29092"
+  application:
+    name: order-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/order-service-postgres
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    contexts: dev
+
+server:
+  port: 8081
+
+logging:
+  level:
+    com.example.order_service: DEBUG
