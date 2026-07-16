@@ -6,32 +6,32 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-@Entity
-@Table(name = "orders_items")
+@Entity// JPA-сущность
+@Table(name = "orders_items")// Связь с БД
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
 @Setter
-@Builder
+@Builder// Паттерн билдер
 public class OrderItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    private UUID id;// Айдишник
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)// Связь один-ко-многим
+    @JoinColumn(name = "order_id", nullable = false)// Внешний ключ
     private Order order;
 
     @Column(name = "product_id", nullable = false)
-    private UUID productId;
+    private UUID productId;// Ссылка на товар из WarehouseService
 
     @Column(name = "product_name", nullable = false, length = 255)
-    private String productName;
+    private String productName;// Дублирование названия чтобы не ходить второй раз в WarehouseService
 
     @Column(name = "quantity", nullable = false)
-    private Integer quantity;
+    private Integer quantity;// Количество
 
     @Column(name = "price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal price;
+    private BigDecimal price;// Цена
 }

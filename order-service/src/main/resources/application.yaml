@@ -1,40 +1,40 @@
 spring:
   kafka:
-    bootstrap-servers: localhost:29092
+    bootstrap-servers: localhost:29092 # Адрес кафки
     producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer # Сериализация ключей
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer # JSON для значений
   cloud:
     stream:
       kafka:
         binder:
-          brokers: "localhost:29092"
+          brokers: "localhost:29092" # Альтернативная настройка для Spring Cloud Stream
   application:
-    name: order-service
+    name: order-service # Базовая идентификация сервера
 
-  datasource:
-    url: jdbc:postgresql://localhost:5432/order-service-postgres
+  datasource: # Подключение к БД
+    url: jdbc:postgresql://localhost:5432/order-service-postgres # JDBC
     username: postgres
     password: postgres
-    driver-class-name: org.postgresql.Driver
+    driver-class-name: org.postgresql.Driver # Драйвер
 
   jpa:
     hibernate:
-      ddl-auto: validate
-    show-sql: true
+      ddl-auto: validate # Проверяет схему
+    show-sql: true # Вывод SQL в консоль
     properties:
       hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true # Форматирует SQL для читаемости
+        dialect: org.hibernate.dialect.PostgreSQLDialect # Диалект для PostgreSQL
 
   liquibase:
-    enabled: true
-    change-log: classpath:db/changelog/db.changelog-master.yaml
-    contexts: dev
+    enabled: true # Включить
+    change-log: classpath:db/changelog/db.changelog-master.yaml # Путь к главному чейнджлогу
+    contexts: dev # Хз че это
 
 server:
-  port: 8081
+  port: 8081 # Приложение будет на порту 8081
 
 logging:
   level:
-    com.example.order_service: DEBUG
+    com.example.order_service: DEBUG # Уровень логирования: DEBUG

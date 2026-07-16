@@ -1,52 +1,52 @@
 version: "3.9"
 services:
   postgres:
-    image: postgres:12.9
+    image: postgres:12.9 # Образ PostgreSQL
     environment:
-      POSTGRES_DB: "order-service-postgres"
-      POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "postgres"
-    command: ["postgres", "-c", "log_statement=all"]
+      POSTGRES_DB: "order-service-postgres" # Название БД
+      POSTGRES_USER: "postgres" # Имя юзера
+      POSTGRES_PASSWORD: "postgres" # Пароль
+    command: ["postgres", "-c", "log_statement=all"] # Логирование всех SQL-запросов
     volumes:
-      - .:/docker-entrypoint-initdb.d
+      - .:/docker-entrypoint-initdb.d # Монтирует папку для инициализации БД
     ports:
-      - "5432:5432"
+      - "5432:5432" # Проброс порта
     networks:
-      - postgres-net
+      - postgres-net # Подключение к сети
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.3.0
+    image: confluentinc/cp-zookeeper:7.3.0 # Образ Zookeeper
     environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_CLIENT_PORT: 2181 # Порт для клиентов
+      ZOOKEEPER_TICK_TIME: 2000 # Время тика
     ports:
-      - 22181:2181
+      - 22181:2181 # Проброс порта
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     depends_on:
-      - zookeeper
+      - zookeeper # Запуск после Zookeper
     ports:
-      - 29092:29092
-    hostname: kafka
+      - 29092:29092 # Проброс порта
+    hostname: kafka # Имя хоста внутри докера
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092, PLAINTEXT_HOST://localhost:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT, PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_BROKER_ID: 1 # ID брокера
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181 # Подключение к Zookeper
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092, PLAINTEXT_HOST://localhost:29092 # Адреса для клиентов внутреннего общения и хоста
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT, PLAINTEXT_HOST:PLAINTEXT # Протоколы для слушателей
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT # Способ общения между брокерами
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1 # Репликация (что бы это не было)
   kafka-ui:
-    image: provectuslabs/kafka-ui
+    image: provectuslabs/kafka-ui # Веб-интерфейс для кафки
     container_name: kafka-ui-2
     ports:
-      - 8090:8080
-    restart: always
+      - 8090:8080 # доступен на http://localhost:8090
+    restart: always # Автоперезапуск
     environment:
-      - KAFKA_CLUSTERS_0_NAME=local
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
-      - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
-    links:
+      - KAFKA_CLUSTERS_0_NAME=local # Имя кластера в UI
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092 # Адрес кафки
+      - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181 # Адрес зукипера
+    links: # Устаревшее говно
       - kafka
       - zookeeper
-networks:
+networks: # Сети
   postgres-net:
     driver: bridge

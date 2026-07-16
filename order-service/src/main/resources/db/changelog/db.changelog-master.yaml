@@ -1,4 +1,4 @@
 databaseChangeLog:
   - include:
-      file: data/changelog.yaml
-      relativeToChangelogFile: true
+      file: data/changelog.yaml # Путь к файлу с миграциями
+      relativeToChangelogFile: true # Путь относительно текущего файла
