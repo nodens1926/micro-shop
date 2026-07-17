@@ -15,7 +15,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class OrderResponse {
+public class OrderResponse {// ДТО для выдачи клиенту деталей заказа
 
     private UUID id;
     private UUID customerId;

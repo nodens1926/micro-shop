@@ -21,61 +21,61 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class OrderServiceImpl implements OrderService {
+public class OrderServiceImpl implements OrderService {// Бизнес-логика, работа с БД, вызов склада через Feign, отправка событий в Kafka и обработка ошибок через ExceptionHandler
 
-    private final OrderRepository orderRepository;
-    private final WarehouseClient warehouseClient;
-    private final KafkaEventPublisher kafkaEventPublisher;
+    private final OrderRepository orderRepository;// Работа с БД
+    private final WarehouseClient warehouseClient;// Feign клиент для вызова АПИ микросервиса
+    private final KafkaEventPublisher kafkaEventPublisher;// Отправка событий в кафка
 
     @Override
-    @Transactional
-    public OrderResponse createOrder(OrderRequest request) {
+    @Transactional// Одна транзакция, если кидает ошибку то всё откатывается
+    public OrderResponse createOrder(OrderRequest request) {// Создание заказа
         log.info("Creating order for customer: {}", request.getCustomerId());
 
-        Order order = mapToOrder(request);
+        Order order = mapToOrder(request);//Преобразование ДТО в энтити
 
-        Order savedOrder = orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);// Сохраняем заказ в БД со статусом PENDING
         log.info("Order saved with status PENDING, id: {}", savedOrder.getId());
 
-        WarehouseReserveRequest reserveRequest = buildWarehouseRequest(request);
+        WarehouseReserveRequest reserveRequest = buildWarehouseRequest(request);// Преобразование OrderRequest в список товаров для резервирования который отправится в другом микросервис
 
-        try {
+        try {// Резервирование товаров + подтверждение заказа
             log.info("Calling Warehouse service to reserve products for order: {}", savedOrder.getId());
-            warehouseClient.reserve(reserveRequest);
+            warehouseClient.reserve(reserveRequest);// Вызов WarehouseService через Feign
 
-            savedOrder.setStatus(OrderStatus.CONFIRMED);
-            savedOrder = orderRepository.save(savedOrder);
+            savedOrder.setStatus(OrderStatus.CONFIRMED);// Если резервирование успешно, меняем статус на ПОДТВЕРЖДЕН
+            savedOrder = orderRepository.save(savedOrder);// Сохраняем в БД
             log.info("Order confirmed, id: {}", savedOrder.getId());
 
-            kafkaEventPublisher.publishOrderEvents(savedOrder);
+            kafkaEventPublisher.publishOrderEvents(savedOrder);// ОТправляем событие в кафку
             log.info("Kafka events published for order: {}", savedOrder.getId());
 
-        } catch (FeignException e) {
+        } catch (FeignException e) {// Обработка ошибок от WarehouseService
             if (e.status() == 400) {
                 log.error("Warehouse conflict for order: {}, status: {}", savedOrder.getId(), e.status());
-                savedOrder.setStatus(OrderStatus.CANCELED);
-                orderRepository.save(savedOrder);
-                throw new WarehouseConflictException("Not enough stock for order: " + savedOrder.getId());
+                savedOrder.setStatus(OrderStatus.CANCELED);// Ставим статус ОТМЕНЕН
+                orderRepository.save(savedOrder);// Пересохраняем в БД
+                throw new WarehouseConflictException("Not enough stock for order: " + savedOrder.getId());// Кидаем ошибку
             }
             log.error("Error calling Warehouse service for order: {}", savedOrder.getId(), e);
             throw new RuntimeException("Warehouse service unavailable", e);
         }
 
-        return mapToOrderResponse(savedOrder);
+        return mapToOrderResponse(savedOrder);// Превращаем Order в OrderResponse и возвращаем
     }
 
     @Override
     @Transactional(readOnly = true)
-    public OrderResponse getOrderById(UUID id) {
+    public OrderResponse getOrderById(UUID id) {// Получнеие заказа по айди
         log.info("Fetching order by id: {}", id);
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + id));
-        return mapToOrderResponse(order);
+        return mapToOrderResponse(order);// Преобразование  Order в OrderResponse
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponse> getOrdersByCustomerId(UUID customerId) {
+    public List<OrderResponse> getOrdersByCustomerId(UUID customerId) {// Поиск заказов покупателя по айди
         log.info("Fetching orders for customer: {}", customerId);
         List<Order> orders = orderRepository.findByCustomerId(customerId);
         return orders.stream()
@@ -84,7 +84,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
 
-    private Order mapToOrder(OrderRequest request) {
+    private Order mapToOrder(OrderRequest request) {// ДТО - Энтити
         Order order = Order.builder()
                 .customerId(request.getCustomerId())
                 .customerEmail(request.getCustomerEmail())
@@ -106,14 +106,15 @@ public class OrderServiceImpl implements OrderService {
         return order;
     }
 
-    private void calculateTotalAmount(Order order) {
+    private void calculateTotalAmount(Order order) {// Подсчет общей суммы заказа
         BigDecimal total = order.getItems().stream()
                 .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         order.setTotalAmount(total);
     }
 
-    private WarehouseReserveRequest buildWarehouseRequest(OrderRequest request) {
+    private WarehouseReserveRequest buildWarehouseRequest(OrderRequest request) {// Запрос к складу
+        // Для каждой части заказа из OrderRequest создает ReserveItem(productId + quantity), собирает в ДТО и возвращает
         List<WarehouseReserveRequest.ReserveItem> reserveItems = request.getItems().stream()
                 .map(item -> WarehouseReserveRequest.ReserveItem.builder()
                         .productId(item.getProductId())
@@ -125,7 +126,7 @@ public class OrderServiceImpl implements OrderService {
                 .build();
     }
 
-    private OrderResponse mapToOrderResponse(Order order) {
+    private OrderResponse mapToOrderResponse(Order order) {// Энтити в ДТО
         List<OrderItemResponse> itemResponses = order.getItems().stream()
                 .map(item -> OrderItemResponse.builder()
                         .id(item.getId())

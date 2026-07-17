@@ -12,7 +12,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ErrorResponse {
+public class ErrorResponse {// ДТО для JSON ответа с ошибкой, который использует ExceptionHandler
 
     private LocalDateTime timestamp;
     private int status;

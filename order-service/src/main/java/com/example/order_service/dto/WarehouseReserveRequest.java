@@ -12,7 +12,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class WarehouseReserveRequest {
+public class WarehouseReserveRequest {// Прием данных товара от WarehouseService
 
     private List<ReserveItem> items;
 

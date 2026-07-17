@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class WarehouseReserveResponse {
+public class WarehouseReserveResponse {// Выдача результата WarehouseService
 
     private boolean success;
     private String message;

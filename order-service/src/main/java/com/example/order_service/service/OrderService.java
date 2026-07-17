@@ -6,7 +6,7 @@ import com.example.order_service.dto.OrderResponse;
 import java.util.List;
 import java.util.UUID;
 
-public interface OrderService {
+public interface OrderService {// Это контракт для OrderServiceImpl
 
     OrderResponse createOrder(OrderRequest request);
 

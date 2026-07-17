@@ -17,16 +17,16 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class OrderRequest {
+public class OrderRequest {// ДТО для приема от клиента деталей заказа
 
     @NotNull(message = "Customer ID is required")
     private UUID customerId;
 
     @NotBlank(message = "Customer email is required")
-    @Email(message = "Invalid email format")
+    @Email(message = "Invalid email format")// Проверяет корректность email
     private String customerEmail;
 
     @NotEmpty(message = "Order must contain at least one item")
-    @Valid
+    @Valid// Рекурсивная валидация, проверяет каждый обьект в списке
     private List<OrderItemRequest> items;
 }
