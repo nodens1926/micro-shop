@@ -22,7 +22,7 @@ public class KafkaEventPublisher {
 
     public void publishOrderEvents(Order order) {
         log.info("Publishing Kafka events for order: {}", order.getId());
-
+        //TODO: Сделать вместо мапы ДТО
         Map<String, Object> orderEvent = buildOrderEvent(order);// Построение события для топика order-events
         kafkaTemplate.send(KafkaConfig.TOPIC_ORDER_EVENTS, order.getId().toString(), orderEvent);// Кафка берет ключ(айди), вычисляет хеш ключа, и отправляет событие в партицию к топику
         log.info("Sent event to topic: {}", KafkaConfig.TOPIC_ORDER_EVENTS);

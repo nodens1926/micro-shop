@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
-      id: 20260711-create-orders-table
-      author: anton
+      id: 20260711-create-orders-table # Уникальный айди, создание orders
+      author: anton # Автор
       changes:
         - createTable:
             tableName: orders
@@ -40,7 +40,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: 20260711-create-orders-items-table
+      id: 20260711-create-orders-items-table # Создание orders_items
       author: anton
       changes:
         - createTable:
@@ -85,7 +85,7 @@ databaseChangeLog:
             constraintName: fk_orders_items_order
             onDelete: CASCADE
 
-  - changeSet:
+  - changeSet: # Индексы для ускорения запросов к БД
       id: 20260711-add-indexes
       author: anton
       changes:
@@ -94,15 +94,15 @@ databaseChangeLog:
             indexName: idx_orders_items_order_id
             columns:
               - column:
-                  name: order_id
+                  name: order_id # Для поиска деталей каждого заказа
         - createIndex:
             tableName: orders
             indexName: idx_orders_customer_id
             columns:
               - column:
-                  name: customer_id
+                  name: customer_id # Для поиска заказов конкретного покупателя
 
-  - changeSet:
+  - changeSet: # Тестовые данные
       id: 20260711-insert-orders
       author: anton
       context: dev

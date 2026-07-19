@@ -30,20 +30,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith(MockitoExtension.class)// Включает @Mock и @InjectMocks
 class OrderServiceTest {
 
     @Mock
-    private OrderRepository orderRepository;
+    private OrderRepository orderRepository;// Мок репозитория
 
     @Mock
-    private WarehouseClient warehouseClient;
+    private WarehouseClient warehouseClient;// Мок фейн-клиента
 
     @Mock
-    private KafkaEventPublisher kafkaEventPublisher;
+    private KafkaEventPublisher kafkaEventPublisher;// Мок кафки
 
     @InjectMocks
-    private OrderServiceImpl orderService;
+    private OrderServiceImpl orderService;// Реальный сервис с фальшивыми зависимостями
 
     private UUID customerId;
     private UUID productId;
@@ -53,7 +53,7 @@ class OrderServiceTest {
     private OrderItem orderItem;
 
     @BeforeEach
-    void setUp() {
+    void setUp() {// Заполнение тестовых данных
         customerId = UUID.randomUUID();
         productId = UUID.randomUUID();
         orderId = UUID.randomUUID();
@@ -91,13 +91,16 @@ class OrderServiceTest {
     }
 
     @Test
-    void createOrder_Success() {
+    void createOrder_Success() {// Успешное создание заказа
+        // Настройка моков
         when(orderRepository.save(any(Order.class))).thenReturn(order);
-        doNothing().when(warehouseClient).reserve(any(WarehouseReserveRequest.class));
-        doNothing().when(kafkaEventPublisher).publishOrderEvents(any(Order.class));
+        doNothing().when(warehouseClient).reserve(any(WarehouseReserveRequest.class));// Если будет вызов фейн - ничего не делать
+        doNothing().when(kafkaEventPublisher).publishOrderEvents(any(Order.class));// Если будет вызов кафки - ничгео не делать
 
+        // Вызов тестируемого метода
         OrderResponse response = orderService.createOrder(orderRequest);
 
+        // Проверка что все создалось правильно
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(orderId);
         assertThat(response.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
@@ -105,49 +108,50 @@ class OrderServiceTest {
         assertThat(response.getTotalAmount()).isEqualTo(new BigDecimal("199.98"));
         assertThat(response.getItems()).hasSize(1);
 
-        verify(orderRepository, times(2)).save(any(Order.class));
-        verify(warehouseClient, times(1)).reserve(any(WarehouseReserveRequest.class));
-        verify(kafkaEventPublisher, times(1)).publishOrderEvents(any(Order.class));
+        verify(orderRepository, times(2)).save(any(Order.class));// Проверка что репозиторий был вызван 2 раза
+        verify(warehouseClient, times(1)).reserve(any(WarehouseReserveRequest.class));// Проверка что WarehouseClient был вызван 1 раз
+        verify(kafkaEventPublisher, times(1)).publishOrderEvents(any(Order.class));// Проверка что кафка была вызвана 1 раз
     }
 
     @Test
-    void createOrder_WarehouseConflict_ShouldCancelOrder() {
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
-        FeignException feignException = mock(FeignException.class);
-        when(feignException.status()).thenReturn(400);
-        doThrow(feignException).when(warehouseClient).reserve(any(WarehouseReserveRequest.class));
+    void createOrder_WarehouseConflict_ShouldCancelOrder() {// Ошибка склада (400)
+        when(orderRepository.save(any(Order.class))).thenReturn(order);// Сохранение order
+        FeignException feignException = mock(FeignException.class);// Создание фальшивого исключение
+        when(feignException.status()).thenReturn(400);// Фальшивый статус код
+        doThrow(feignException).when(warehouseClient).reserve(any(WarehouseReserveRequest.class));// Когда будет вызов WarehouseService выбрось исключение
 
-        assertThatThrownBy(() -> orderService.createOrder(orderRequest))
+
+        assertThatThrownBy(() -> orderService.createOrder(orderRequest))// Проверка что исключение выбросилось
                 .isInstanceOf(WarehouseConflictException.class)
                 .hasMessageContaining("Not enough stock");
 
-        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
-        verify(orderRepository, times(2)).save(orderCaptor.capture());
-        List<Order> savedOrders = orderCaptor.getAllValues();
-        assertThat(savedOrders.get(1).getStatus()).isEqualTo(OrderStatus.CANCELED);
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);// Ловушка для класса
+        verify(orderRepository, times(2)).save(orderCaptor.capture());// Проверяем что save вызвался 2 раза
+        List<Order> savedOrders = orderCaptor.getAllValues();// Получаем все сохраненные заказы
+        assertThat(savedOrders.get(1).getStatus()).isEqualTo(OrderStatus.CANCELED);// Чек что заказ отменился
 
-        verify(kafkaEventPublisher, never()).publishOrderEvents(any(Order.class));
+        verify(kafkaEventPublisher, never()).publishOrderEvents(any(Order.class));// Чек что кафка никогда не вызывалась благодаря
     }
 
     @Test
-    void createOrder_WarehouseUnavailable_ShouldThrowException() {
+    void createOrder_WarehouseUnavailable_ShouldThrowException() {// Ошибка сервера 500
         when(orderRepository.save(any(Order.class))).thenReturn(order);
         FeignException feignException = mock(FeignException.class);
-        when(feignException.status()).thenReturn(500);
-        doThrow(feignException).when(warehouseClient).reserve(any(WarehouseReserveRequest.class));
+        when(feignException.status()).thenReturn(500);// Код 500 вместо 400
+        doThrow(feignException).when(warehouseClient).reserve(any(WarehouseReserveRequest.class));// Выбросить исключение когда будет образение к WarehouseClient
 
         assertThatThrownBy(() -> orderService.createOrder(orderRequest))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(RuntimeException.class)// Чек что выброщено 500
                 .hasMessage("Warehouse service unavailable");
 
-        verify(kafkaEventPublisher, never()).publishOrderEvents(any(Order.class));
+        verify(kafkaEventPublisher, never()).publishOrderEvents(any(Order.class));// Кафка не вызывается
     }
 
     @Test
-    void getOrderById_Success() {
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+    void getOrderById_Success() {// Получение заказа
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));// Когда будет вызов по айди, верни Optional с order
 
-        OrderResponse response = orderService.getOrderById(orderId);
+        OrderResponse response = orderService.getOrderById(orderId);// Вызов
 
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(orderId);
@@ -156,17 +160,17 @@ class OrderServiceTest {
     }
 
     @Test
-    void getOrderById_NotFound_ShouldThrowException() {
+    void getOrderById_NotFound_ShouldThrowException() {// Заказ не найден
         UUID nonExistentId = UUID.randomUUID();
-        when(orderRepository.findById(nonExistentId)).thenReturn(Optional.empty());
+        when(orderRepository.findById(nonExistentId)).thenReturn(Optional.empty());// Если будет вызов, возвращаем Optional с заказом
 
-        assertThatThrownBy(() -> orderService.getOrderById(nonExistentId))
+        assertThatThrownBy(() -> orderService.getOrderById(nonExistentId))// Чек что выкидывает ошибку
                 .isInstanceOf(OrderNotFoundException.class)
                 .hasMessageContaining("Order not found with id: " + nonExistentId);
     }
 
     @Test
-    void getOrdersByCustomerId_Success() {
+    void getOrdersByCustomerId_Success() {// Заказы клиента
         List<Order> orders = List.of(order);
         when(orderRepository.findByCustomerId(customerId)).thenReturn(orders);
 
@@ -178,7 +182,7 @@ class OrderServiceTest {
     }
 
     @Test
-    void getOrdersByCustomerId_EmptyList_ShouldReturnEmptyList() {
+    void getOrdersByCustomerId_EmptyList_ShouldReturnEmptyList() {// Нет заказов
         UUID emptyCustomerId = UUID.randomUUID();
         when(orderRepository.findByCustomerId(emptyCustomerId)).thenReturn(List.of());
 

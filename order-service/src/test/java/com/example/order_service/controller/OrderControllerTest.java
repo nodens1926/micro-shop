@@ -28,26 +28,26 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(OrderController.class)
+@WebMvcTest(OrderController.class)// Загружает слой веб(контроллеры), но не загружает полный контекст Спринг
 class OrderControllerTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private MockMvc mockMvc;// Для отправки HTTP запросов
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private ObjectMapper objectMapper;// Для сериализации/десериализации JSON
 
     @MockitoBean
-    private OrderService orderService;
+    private OrderService orderService;// Мок сервиса
 
-    private UUID orderId;
+    private UUID orderId;// Тестовые данные
     private UUID customerId;
     private UUID productId;
     private OrderRequest orderRequest;
     private OrderResponse orderResponse;
 
     @BeforeEach
-    void setUp() {
+    void setUp() {// Заполнение тестовых данных
         orderId = UUID.randomUUID();
         customerId = UUID.randomUUID();
         productId = UUID.randomUUID();
@@ -85,88 +85,88 @@ class OrderControllerTest {
     }
 
     @Test
-    void createOrder_Success() throws Exception {
-        when(orderService.createOrder(any(OrderRequest.class))).thenReturn(orderResponse);
+    void createOrder_Success() throws Exception {// Успешное создание заказа
+        when(orderService.createOrder(any(OrderRequest.class))).thenReturn(orderResponse);// Когда вызовут createOrder с любым OrderRequest, верни OrderResponse
 
-        mockMvc.perform(post("/api/v1/orders")
+        mockMvc.perform(post("/api/v1/orders")// Отправляет POST запрос на "/api/v1/orders" с телом: ...
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderRequest)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(orderId.toString()))
-                .andExpect(jsonPath("$.status").value("CONFIRMED"))
-                .andExpect(jsonPath("$.customerEmail").value("test@example.com"))
+                .andExpect(status().isCreated())// Статус 201 Created
+                .andExpect(jsonPath("$.id").value(orderId.toString()))// ID заказа совпадает
+                .andExpect(jsonPath("$.status").value("CONFIRMED"))// Статус = CONFIRMED
+                .andExpect(jsonPath("$.customerEmail").value("test@example.com"))// Почта совпадает
                 .andExpect(jsonPath("$.items").isArray())
-                .andExpect(jsonPath("$.items[0].productName").value("Test Product"));
+                .andExpect(jsonPath("$.items[0].productName").value("Test Product"));// В items есть название продукта Test Product
     }
 
     @Test
-    void createOrder_ValidationError_ShouldReturnBadRequest() throws Exception {
+    void createOrder_ValidationError_ShouldReturnBadRequest() throws Exception {// Ошибка валидации
         OrderRequest invalidRequest = OrderRequest.builder()
                 .customerId(customerId)
-                .customerEmail("")
-                .items(List.of())
+                .customerEmail("")// Невалидная почта
+                .items(List.of())// Пустой список частей заказа
                 .build();
 
-        mockMvc.perform(post("/api/v1/orders")
+        mockMvc.perform(post("/api/v1/orders")// Отправляет запрос
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest());// Ожидает ошибку
     }
 
     @Test
-    void createOrder_WarehouseConflict_ShouldReturnConflict() throws Exception {
+    void createOrder_WarehouseConflict_ShouldReturnConflict() throws Exception {// Конфликт на складе
         when(orderService.createOrder(any(OrderRequest.class)))
-                .thenThrow(new WarehouseConflictException("Not enough stock"));
+                .thenThrow(new WarehouseConflictException("Not enough stock"));// При создании заказа выкидываем ошибку о переполнении
 
-        mockMvc.perform(post("/api/v1/orders")
+        mockMvc.perform(post("/api/v1/orders")// Отправка запроса
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderRequest)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value("Not enough stock"));
+                .andExpect(jsonPath("$.message").value("Not enough stock"));// Ожидаем сообщение о переполнении
     }
 
     @Test
-    void getOrder_Success() throws Exception {
+    void getOrder_Success() throws Exception {// Получение заказа
         when(orderService.getOrderById(orderId)).thenReturn(orderResponse);
 
         mockMvc.perform(get("/api/v1/orders/{id}", orderId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(orderId.toString()))
-                .andExpect(jsonPath("$.customerEmail").value("test@example.com"))
-                .andExpect(jsonPath("$.items[0].productName").value("Test Product"));
+                .andExpect(status().isOk())// Должен вернуть 200
+                .andExpect(jsonPath("$.id").value(orderId.toString()))// Подтверждение что айди верен
+                .andExpect(jsonPath("$.customerEmail").value("test@example.com"))// Эмейл верен
+                .andExpect(jsonPath("$.items[0].productName").value("Test Product"));// Название продукта верно
     }
 
     @Test
-    void getOrder_NotFound_ShouldReturnNotFound() throws Exception {
-        UUID nonExistentId = UUID.randomUUID();
+    void getOrder_NotFound_ShouldReturnNotFound() throws Exception {// Заказ не найден
+        UUID nonExistentId = UUID.randomUUID();// Генерируем рандомный UUID
         when(orderService.getOrderById(nonExistentId))
-                .thenThrow(new OrderNotFoundException("Order not found with id: " + nonExistentId));
+                .thenThrow(new OrderNotFoundException("Order not found with id: " + nonExistentId));// При неправильном айди выбрасываем сообщение об ошибке
 
         mockMvc.perform(get("/api/v1/orders/{id}", nonExistentId))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Order not found with id: " + nonExistentId));
+                .andExpect(status().isNotFound())// 404
+                .andExpect(jsonPath("$.message").value("Order not found with id: " + nonExistentId));// Ожидаем сообщение об ошибке
     }
 
     @Test
-    void getCustomerOrders_Success() throws Exception {
-        List<OrderResponse> orders = List.of(orderResponse);
+    void getCustomerOrders_Success() throws Exception {// Заказы клиента
+        List<OrderResponse> orders = List.of(orderResponse);// Генерируем лист с заказами
         when(orderService.getOrdersByCustomerId(customerId)).thenReturn(orders);
 
         mockMvc.perform(get("/api/v1/orders/customer/{customerId}", customerId))
-                .andExpect(status().isOk())
+                .andExpect(status().isOk())// 200
                 .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[0].id").value(orderId.toString()))
-                .andExpect(jsonPath("$[0].customerEmail").value("test@example.com"));
+                .andExpect(jsonPath("$[0].id").value(orderId.toString()))// id верен
+                .andExpect(jsonPath("$[0].customerEmail").value("test@example.com"));// почта верна
     }
 
     @Test
-    void getCustomerOrders_EmptyList_ShouldReturnEmptyArray() throws Exception {
-        UUID emptyCustomerId = UUID.randomUUID();
+    void getCustomerOrders_EmptyList_ShouldReturnEmptyArray() throws Exception {// Нет заказов
+        UUID emptyCustomerId = UUID.randomUUID();// Рандомный UUID
         when(orderService.getOrdersByCustomerId(emptyCustomerId)).thenReturn(List.of());
 
         mockMvc.perform(get("/api/v1/orders/customer/{customerId}", emptyCustomerId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$").isEmpty());
+                .andExpect(status().isOk())// 200
+                .andExpect(jsonPath("$").isArray())// Это массив
+                .andExpect(jsonPath("$").isEmpty());// Пустой
     }
 }

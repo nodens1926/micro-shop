@@ -23,23 +23,23 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
-@Testcontainers
-@Transactional
+@SpringBootTest// Загружает полный контекст Spring
+@Testcontainers// Запускает поддержку testcontainers (Запускает реальный PostgreSQL в докер контейнере)
+@Transactional// После каждого теста данные в БД откатываются
 class OrderIntegrationTest {
 
-    @Container
+    @Container// Запуск контейнера в докере
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:12.9")
             .withDatabaseName("testdb")
             .withUsername("test")
             .withPassword("test");
 
-    @DynamicPropertySource
+    @DynamicPropertySource// Настройка подключения к БД
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.liquibase.enabled", () -> "true");
+        registry.add("spring.liquibase.enabled", () -> "true");// Включение ликвибейз
     }
 
     @Autowired
@@ -52,7 +52,7 @@ class OrderIntegrationTest {
     private UUID productId;
     private OrderRequest orderRequest;
 
-    @BeforeEach
+    @BeforeEach// Заполнение тестовых данных
     void setUp() {
         customerId = UUID.randomUUID();
         productId = UUID.randomUUID();
@@ -72,15 +72,18 @@ class OrderIntegrationTest {
     }
 
     @Test
-    void createOrder_Success() {
+    void createOrder_Success() {// Создание заказа
+        // Вызов релаьного сервиса
         OrderResponse response = orderService.createOrder(orderRequest);
 
+        // Проверка ответа от него
         assertThat(response).isNotNull();
         assertThat(response.getId()).isNotNull();
         assertThat(response.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
         assertThat(response.getCustomerEmail()).isEqualTo("test@example.com");
         assertThat(response.getTotalAmount()).isEqualTo(new BigDecimal("199.98"));
 
+        // Чекаем что данные реально в БД
         var savedOrder = orderRepository.findById(response.getId());
         assertThat(savedOrder).isPresent();
         assertThat(savedOrder.get().getStatus()).isEqualTo(OrderStatus.CONFIRMED);
@@ -89,11 +92,14 @@ class OrderIntegrationTest {
     }
 
     @Test
-    void getOrderById_Success() {
+    void getOrderById_Success() {// Получние заказа
+        // Создание заказа
         OrderResponse created = orderService.createOrder(orderRequest);
 
+        // Получене его по айди
         OrderResponse found = orderService.getOrderById(created.getId());
 
+        // ПРоверка что данные совпадают
         assertThat(found).isNotNull();
         assertThat(found.getId()).isEqualTo(created.getId());
         assertThat(found.getCustomerEmail()).isEqualTo("test@example.com");
@@ -101,9 +107,11 @@ class OrderIntegrationTest {
     }
 
     @Test
-    void getOrdersByCustomerId_Success() {
+    void getOrdersByCustomerId_Success() {// Заказы клиента
+        // Создание заказа
         orderService.createOrder(orderRequest);
 
+        // Получение всех заказов клиента
         var orders = orderService.getOrdersByCustomerId(customerId);
 
         assertThat(orders).isNotEmpty();
