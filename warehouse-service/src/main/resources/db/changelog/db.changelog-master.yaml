@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/v1/v1_create_stock_table.yaml
+  - include:
+      file: db/changelog/v1/v1_create_reservations_table.yaml
+  - include:
+      file: db/changelog/v2/v2_add_version_to_stock.yaml
