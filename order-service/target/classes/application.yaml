@@ -5,6 +5,8 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer # Сериализация ключей
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer # JSON для значений
   cloud:
+    compatibility-verifier:
+      enabled: false
     stream:
       kafka:
         binder:
