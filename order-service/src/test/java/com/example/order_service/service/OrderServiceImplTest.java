@@ -28,21 +28,21 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-// TODO: прокомментировать класс
+// включение поддержки Мокито
 @ExtendWith(MockitoExtension.class)
 class OrderServiceImplTest {
 
     @Mock
-    private OrderRepository orderRepository;
+    private OrderRepository orderRepository;// создает мок БД
 
     @Mock
-    private WarehouseClient warehouseClient;
+    private WarehouseClient warehouseClient;// мок фейн-клиента
 
     @Mock
-    private KafkaEventPublisher kafkaEventPublisher;
+    private KafkaEventPublisher kafkaEventPublisher;// мок кафки
 
     @InjectMocks
-    private OrderServiceImpl orderService;
+    private OrderServiceImpl orderService;// реальный обьект, с внедрением фальшивых зависимостей сверху
 
     private UUID customerId;
     private UUID productId1;
@@ -51,7 +51,7 @@ class OrderServiceImplTest {
     private Order order;
 
     @BeforeEach
-    void setUp() {
+    void setUp() {// заполнение тестовых данных
         customerId = UUID.randomUUID();
         productId1 = UUID.randomUUID();
         productId2 = UUID.randomUUID();
@@ -109,53 +109,52 @@ class OrderServiceImplTest {
     }
 
     @Test
-    void createOrder_Success() {
-        when(warehouseClient.reserve(any(WarehouseReserveRequest.class)))
-                .thenReturn(ResponseEntity.ok().build());
+    void createOrder_Success() {// создние заказа
+        when(warehouseClient.reserve(any(WarehouseReserveRequest.class)))// когда вызываем фейн-клиент - отвечаем 200
+                .thenReturn(ResponseEntity.ok().build());// thenReturn - возвращаем обьект
 
-        // Важно: при сохранении возвращаем заказ с правильным статусом
         when(orderRepository.save(any(Order.class)))
-                .thenAnswer(invocation -> {
+                .thenAnswer(invocation -> {// вместо возврата ответа - выполняем следующую логику
                     Order savedOrder = invocation.getArgument(0);
                     savedOrder.setId(UUID.randomUUID());
                     savedOrder.setStatus(OrderStatus.CONFIRMED);
                     return savedOrder;
                 });
 
-        doNothing().when(kafkaEventPublisher).publishOrderEvents(any(Order.class));
+        doNothing().when(kafkaEventPublisher).publishOrderEvents(any(Order.class));// не делаем ничего когда вызываем кафку
 
-        OrderResponse result = orderService.createOrder(orderRequest);
+        OrderResponse result = orderService.createOrder(orderRequest);// вызов самого тестируемого метода
 
-        assertThat(result).isNotNull();
-        assertThat(result.getCustomerId()).isEqualTo(customerId);
-        assertThat(result.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
-        assertThat(result.getTotalAmount()).isEqualByComparingTo(new BigDecimal("151.00"));
-        assertThat(result.getItems()).hasSize(2);
+        assertThat(result).isNotNull();// проверка что ответ существует
+        assertThat(result.getCustomerId()).isEqualTo(customerId);// проверка что result содержит customerId который мы используем в orderRequest
+        assertThat(result.getStatus()).isEqualTo(OrderStatus.CONFIRMED);// CONFIRMED мы ставим в when сверху
+        assertThat(result.getTotalAmount()).isEqualByComparingTo(new BigDecimal("151.00"));// проверка суммы частей заказа
+        assertThat(result.getItems()).hasSize(2);// проверка что содержит item1 и item2 которые мы добавили в orderRequest
 
-        verify(warehouseClient).reserve(any(WarehouseReserveRequest.class));
-        verify(orderRepository).save(any(Order.class));
-        verify(kafkaEventPublisher).publishOrderEvents(any(Order.class));
+        verify(warehouseClient).reserve(any(WarehouseReserveRequest.class));// проверяем что метод reserve был вызван ровно 1 раз
+        verify(orderRepository).save(any(Order.class));// тож самое
+        verify(kafkaEventPublisher).publishOrderEvents(any(Order.class));// тож самое
     }
 
     @Test
-    void createOrder_WarehouseConflict_ThrowsException() {
-        FeignException feignException = mock(FeignException.class);
-        when(feignException.status()).thenReturn(400);
+    void createOrder_WarehouseConflict_ThrowsException() {// ошибка склада 400(чекает что будет если склад отвечает Bad Request), типо переполнен и тп
+        FeignException feignException = mock(FeignException.class);// мок фейн-ошибки
+        when(feignException.status()).thenReturn(400);// настраиваем чтобы метод status() ошибки возвращал 400
 
-        when(warehouseClient.reserve(any(WarehouseReserveRequest.class)))
+        when(warehouseClient.reserve(any(WarehouseReserveRequest.class)))// когда вызовут метод reserve у WarehouseClient - выбрасываем мок ошибки
                 .thenThrow(feignException);
 
-        assertThatThrownBy(() -> orderService.createOrder(orderRequest))
+        assertThatThrownBy(() -> orderService.createOrder(orderRequest))// проверка что ошибка выбрасывается при попытке вызвать метод createOrder
                 .isInstanceOf(WarehouseConflictException.class)
                 .hasMessage("Not enough stock");
 
-        verify(warehouseClient).reserve(any(WarehouseReserveRequest.class));
-        verify(orderRepository, never()).save(any(Order.class));
-        verify(kafkaEventPublisher, never()).publishOrderEvents(any(Order.class));
+        verify(warehouseClient).reserve(any(WarehouseReserveRequest.class));// чекаем чтобы был вызван метод фейн клиента
+        verify(orderRepository, never()).save(any(Order.class));// чекаем что метод сохранения в БД никогде не был вызван
+        verify(kafkaEventPublisher, never()).publishOrderEvents(any(Order.class));// чекаем что кафка ниче не делала тоже
     }
 
     @Test
-    void createOrder_WarehouseServiceUnavailable_ThrowsException() {
+    void createOrder_WarehouseServiceUnavailable_ThrowsException() {// склад недоступен (500), метод почти аналогичем предыдущему
         FeignException feignException = mock(FeignException.class);
         when(feignException.status()).thenReturn(500);
 
@@ -172,25 +171,25 @@ class OrderServiceImplTest {
     }
 
     @Test
-    void createOrder_WarehouseServiceUnavailable_WithNullStatus() {
+    void createOrder_WarehouseServiceUnavailable_WithNullStatus() {// проверка обработки null методом createOrder
         FeignException feignException = mock(FeignException.class);
-        doThrow(feignException).when(warehouseClient).reserve(any(WarehouseReserveRequest.class));
+        doThrow(feignException).when(warehouseClient).reserve(any(WarehouseReserveRequest.class));// бросаем исключение если нет обработки статуса
 
-        assertThatThrownBy(() -> orderService.createOrder(orderRequest))
+        assertThatThrownBy(() -> orderService.createOrder(orderRequest))// ожидаем RuntimeException с тем же сообщением
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Warehouse service unavailable");
 
-        verify(warehouseClient).reserve(any(WarehouseReserveRequest.class));
-        verify(orderRepository, never()).save(any(Order.class));
-        verify(kafkaEventPublisher, never()).publishOrderEvents(any(Order.class));
+        verify(warehouseClient).reserve(any(WarehouseReserveRequest.class));// проверяем что метод фейн-клиента был вызван 1 раз
+        verify(orderRepository, never()).save(any(Order.class));// проверяем что метод БД не был вызван
+        verify(kafkaEventPublisher, never()).publishOrderEvents(any(Order.class));// проверяем что кафка не была вызвана
     }
 
     @Test
-    void createOrder_SavesOrderWithCorrectStatus() {
+    void createOrder_SavesOrderWithCorrectStatus() {// проверка статуса
         when(warehouseClient.reserve(any(WarehouseReserveRequest.class)))
-                .thenReturn(ResponseEntity.ok().build());
+                .thenReturn(ResponseEntity.ok().build());// когда вызываем фейн-клиент возвращаем 200
 
-        when(orderRepository.save(any(Order.class)))
+        when(orderRepository.save(any(Order.class)))// когда вызываем save в БД -> проставляем ID и статус
                 .thenAnswer(invocation -> {
                     Order savedOrder = invocation.getArgument(0);
                     savedOrder.setId(UUID.randomUUID());
@@ -198,23 +197,23 @@ class OrderServiceImplTest {
                     return savedOrder;
                 });
 
-        doNothing().when(kafkaEventPublisher).publishOrderEvents(any(Order.class));
+        doNothing().when(kafkaEventPublisher).publishOrderEvents(any(Order.class));// ничего не делаем когда вызываем кафку
 
-        orderService.createOrder(orderRequest);
+        orderService.createOrder(orderRequest);// вызываем createOrder
 
-        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
-        verify(orderRepository).save(orderCaptor.capture());
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);// ловушка для аргументов - захватываем заказ
+        verify(orderRepository).save(orderCaptor.capture());// проверяем что тот же заказ был передан в методе save()
 
-        Order savedOrder = orderCaptor.getValue();
-        assertThat(savedOrder.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
-        assertThat(savedOrder.getCustomerId()).isEqualTo(customerId);
-        assertThat(savedOrder.getCustomerEmail()).isEqualTo("customer@example.com");
-        assertThat(savedOrder.getTotalAmount()).isEqualByComparingTo(new BigDecimal("151.00"));
-        assertThat(savedOrder.getItems()).hasSize(2);
+        Order savedOrder = orderCaptor.getValue();//  getValue() - достает последний перехваченный обьект
+        assertThat(savedOrder.getStatus()).isEqualTo(OrderStatus.CONFIRMED);// сравниваем статусы
+        assertThat(savedOrder.getCustomerId()).isEqualTo(customerId);// сравниваем айди
+        assertThat(savedOrder.getCustomerEmail()).isEqualTo("customer@example.com");// сравниваем почту
+        assertThat(savedOrder.getTotalAmount()).isEqualByComparingTo(new BigDecimal("151.00"));// сравниваем сумму частей заказа
+        assertThat(savedOrder.getItems()).hasSize(2);// сравниваем количество частей заказа
     }
 
     @Test
-    void getOrderById_Success() {
+    void getOrderById_Success() {// получение заказа
         UUID orderId = order.getId();
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
 
@@ -234,7 +233,7 @@ class OrderServiceImplTest {
     }
 
     @Test
-    void getOrderById_OrderNotFound_ThrowsException() {
+    void getOrderById_OrderNotFound_ThrowsException() {// заказ не найден
         UUID nonExistentId = UUID.randomUUID();
         when(orderRepository.findById(nonExistentId)).thenReturn(Optional.empty());
 
@@ -246,7 +245,7 @@ class OrderServiceImplTest {
     }
 
     @Test
-    void getOrdersByCustomerId_Success() {
+    void getOrdersByCustomerId_Success() {// поиск заказов по айди пользователя
         List<Order> orders = List.of(order);
         when(orderRepository.findByCustomerId(customerId)).thenReturn(orders);
 
@@ -264,7 +263,7 @@ class OrderServiceImplTest {
     }
 
     @Test
-    void getOrdersByCustomerId_EmptyList_ReturnsEmptyList() {
+    void getOrdersByCustomerId_EmptyList_ReturnsEmptyList() {// нет заказов
         UUID customerId = UUID.randomUUID();
         when(orderRepository.findByCustomerId(customerId)).thenReturn(List.of());
 
@@ -275,7 +274,7 @@ class OrderServiceImplTest {
     }
 
     @Test
-    void getOrdersByCustomerId_MultipleOrders() {
+    void getOrdersByCustomerId_MultipleOrders() {// поиск нескольких закзов по айди пользователя
         Order order2 = Order.builder()
                 .id(UUID.randomUUID())
                 .customerId(customerId)
@@ -306,7 +305,7 @@ class OrderServiceImplTest {
     }
 
     @Test
-    void createOrder_WithEmptyItems_ShouldCalculateTotalZero() {
+    void createOrder_WithEmptyItems_ShouldCalculateTotalZero() {// создание заказа с пустым списком частей заказа
         OrderRequest emptyRequest = OrderRequest.builder()
                 .customerId(customerId)
                 .customerEmail("customer@example.com")
@@ -342,7 +341,7 @@ class OrderServiceImplTest {
     }
 
     @Test
-    void createOrder_SavesOrderWithCorrectTotalAmount() {
+    void createOrder_SavesOrderWithCorrectTotalAmount() {// создание заказа, проверка на корректность расчета суммы
         when(warehouseClient.reserve(any(WarehouseReserveRequest.class)))
                 .thenReturn(ResponseEntity.ok().build());
 
@@ -368,7 +367,7 @@ class OrderServiceImplTest {
     }
 
     @Test
-    void createOrder_PublishesKafkaEventsWithCorrectData() {
+    void createOrder_PublishesKafkaEventsWithCorrectData() {// проверка кафки при создании заказа
         when(warehouseClient.reserve(any(WarehouseReserveRequest.class)))
                 .thenReturn(ResponseEntity.ok().build());
 
@@ -394,7 +393,7 @@ class OrderServiceImplTest {
     }
 
     @Test
-    void saveOrderInTransaction_ShouldBeCalledWithinTransaction() {
+    void saveOrderInTransaction_ShouldBeCalledWithinTransaction() {// проверка транзакции???
         when(warehouseClient.reserve(any(WarehouseReserveRequest.class)))
                 .thenReturn(ResponseEntity.ok().build());
 

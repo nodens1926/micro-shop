@@ -27,7 +27,6 @@ public class OrderServiceImpl implements OrderService {// Бизнес-логи�
     private final WarehouseClient warehouseClient;// Feign клиент для вызова АПИ микросервиса
     private final KafkaEventPublisher kafkaEventPublisher;// Отправка событий в кафка
 
-    // TODO: прокомментировать метод
     @Override
     public OrderResponse createOrder(OrderRequest request) {
         log.info("Creating order for customer: {}", request.getCustomerId());
