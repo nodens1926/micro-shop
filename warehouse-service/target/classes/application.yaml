@@ -10,15 +10,14 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create-drop  # Изменено с validate на create-drop
+      ddl-auto: create-drop
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-        # dialect: org.hibernate.dialect.PostgreSQLDialect  # Закомментировано, т.к. Spring сам определяет
 
   liquibase:
-    enabled: false  # Отключаем Liquibase на время разработки
+    enabled: true
 
   kafka:
     bootstrap-servers: localhost:29092

@@ -11,6 +11,5 @@ class WarehouseServiceApplicationTests {
     @Test
     @Disabled
     void contextLoads() {
-        // Пустой тест
     }
 }

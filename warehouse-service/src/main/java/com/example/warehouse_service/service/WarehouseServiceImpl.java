@@ -38,7 +38,6 @@ public class WarehouseServiceImpl implements WarehouseService {
         List<ReserveResponse.MissingItem> missingItems = new ArrayList<>();
         List<Reservation> reservations = new ArrayList<>();
 
-        // Проверяем наличие всех товаров
         for (ReserveRequest.ReserveItem item : request.getItems()) {
             Stock stock = stockRepository.findByProductIdWithLock(item.getProductId())
                     .orElseThrow(() -> new ProductNotFoundException(
@@ -55,7 +54,6 @@ public class WarehouseServiceImpl implements WarehouseService {
             }
         }
 
-        // Если есть недостающие товары, возвращаем ошибку
         if (!missingItems.isEmpty()) {
             ReserveResponse response = ReserveResponse.builder()
                     .success(false)
@@ -65,8 +63,7 @@ public class WarehouseServiceImpl implements WarehouseService {
             throw new InsufficientStockException(response);
         }
 
-        // Резервируем товары
-        UUID orderId = UUID.randomUUID(); // В реальном приложении orderId будет из запроса
+        UUID orderId = UUID.randomUUID();
 
         for (ReserveRequest.ReserveItem item : request.getItems()) {
             Stock stock = stockRepository.findByProductIdWithLock(item.getProductId())
@@ -74,11 +71,9 @@ public class WarehouseServiceImpl implements WarehouseService {
                             "Product not found: " + item.getProductId()
                     ));
 
-            // Уменьшаем доступное количество
             stock.setAvailableQuantity(stock.getAvailableQuantity() - item.getQuantity());
             stockRepository.save(stock);
 
-            // Создаем запись резерва
             Reservation reservation = Reservation.builder()
                     .orderId(orderId)
                     .productId(item.getProductId())
@@ -129,7 +124,6 @@ public class WarehouseServiceImpl implements WarehouseService {
             return;
         }
 
-        // Находим все резервы для заказа
         List<Reservation> reservations = reservationRepository.findByOrderIdAndStatus(
                 event.getOrderId(), ReservationStatus.PENDING.getValue());
 
@@ -138,10 +132,8 @@ public class WarehouseServiceImpl implements WarehouseService {
             return;
         }
 
-        // Подтверждаем резервы (или списываем товары)
         for (Reservation reservation : reservations) {
             reservation.setStatus(ReservationStatus.CONFIRMED.getValue());
-            // Здесь можно также списать товары или просто подтвердить резерв
         }
 
         reservationRepository.saveAll(reservations);
